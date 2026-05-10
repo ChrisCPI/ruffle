@@ -131,11 +131,11 @@ pub fn get_scale9grid<'gc>(
 
     if let Some(dobj) = this.as_display_object() {
         let rect = dobj.scaling_grid();
-        if rect.is_valid() {
-            return new_rectangle(activation, rect);
+        return if rect.is_valid() {
+            new_rectangle(activation, rect)
         } else {
-            return Ok(Value::Null);
-        }
+            Ok(Value::Null)
+        };
     }
 
     Ok(Value::Undefined)

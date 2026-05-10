@@ -1298,8 +1298,13 @@ fn render_with_scale9<'gc>(
         this.render_self(context);
         return;
     }
-    let world_sx = world_matrix.a;
-    let world_sy = world_matrix.d;
+
+    // Slice at own scale; the world matrix on the stack stretches the
+    // result on render. Reading world.a here would pre-shrink corners
+    // against the parent chain too, then double-stretch them.
+    let own_matrix = this.base().matrix();
+    let world_sx = own_matrix.a;
+    let world_sy = own_matrix.d;
     if world_sx <= 0.0 || world_sy <= 0.0 {
         this.render_self(context);
         return;
@@ -1393,22 +1398,16 @@ fn walk_with_slice<'gc>(
             }
             let cm = child.base().matrix();
 
-            // Rotated/skewed/mirrored: render normally.
-            if cm.b != 0.0 || cm.c != 0.0 || cm.a <= 0.0 || cm.d <= 0.0 {
-                child.render(context);
-                continue;
-            }
-
-            // Child has its own valid scale9Grid: defer (innermost wins).
-            if child.scaling_grid().is_valid() {
+            // FP innermost-wins: any non-identity child matrix (scale,
+            // rotation, skew, mirror) forms its own scaling context, so the
+            // parent's grid stops here.
+            if cm.a != 1.0 || cm.d != 1.0 || cm.b != 0.0 || cm.c != 0.0 {
                 child.render(context);
                 continue;
             }
 
             let child_grid = inverse_axis_aligned_rect(&cm, grid_in_node_local);
             let child_bounds = inverse_axis_aligned_rect(&cm, bounds_in_node_local);
-            let child_sx = world_sx * cm.a;
-            let child_sy = world_sy * cm.d;
 
             match child {
                 DisplayObject::Graphic(_) | DisplayObject::MorphShape(_) => {
@@ -1416,8 +1415,8 @@ fn walk_with_slice<'gc>(
                         child,
                         child_grid,
                         child_bounds,
-                        child_sx,
-                        child_sy,
+                        world_sx,
+                        world_sy,
                         true,
                         context,
                     );
@@ -1431,8 +1430,8 @@ fn walk_with_slice<'gc>(
                             child,
                             child_grid,
                             child_bounds,
-                            child_sx,
-                            child_sy,
+                            world_sx,
+                            world_sy,
                             true,
                             context,
                         );
