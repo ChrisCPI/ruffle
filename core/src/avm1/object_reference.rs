@@ -90,6 +90,27 @@ impl<'gc> MovieClipReference<'gc> {
         Some(Self(Gc::new(activation.gc(), mc_ref)))
     }
 
+    pub fn new_from_path(
+        activation: &mut Activation<'_, 'gc>,
+        path: AvmString<'gc>,
+    ) -> Option<Self> {
+        /*let base_clip = activation.base_clip();
+        let root = base_clip.avm1_root();
+        let start = base_clip.object1_or_bare(activation.gc());
+        let path = activation
+            .resolve_target_path(root, start, &path, true)
+            .ok()?
+            .and_then(|o| o.as_display_object())
+            .map(|o| o.path())?;*/
+        tracing::info!("new_from_path, path is {:?}", path);
+        let mc_ref = MovieClipReferenceData {
+            //path: MovieClipPath::new_from_path(activation.gc(), path),
+            path: MovieClipPath::new_from_path(activation.gc(), path.as_wstr().to_owned()),
+            cached_object: None.into(),
+        };
+        Some(Self(Gc::new(activation.gc(), mc_ref)))
+    }
+
     /// Handle the logic of swfv5 DisplayObjects
     fn process_swf5_references(
         activation: &mut Activation<'_, 'gc>,
@@ -151,6 +172,8 @@ impl<'gc> MovieClipReference<'gc> {
 
         // Get the level
         let mut start = Some(activation.get_or_create_level(self.0.path.level));
+
+        //tracing::info!("WHAT IS THE RESOLVED? {:?}", self.0.path);
 
         // Keep traversing to find the target DisplayObject
         for part in self.0.path.path_segments.iter() {
