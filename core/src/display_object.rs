@@ -1228,7 +1228,7 @@ fn compute_scale9_scope<'gc>(this: DisplayObject<'gc>) -> Option<Scale9Scope> {
         return None;
     }
 
-    if !has_sliceable_geometry(this) {
+    if !this.has_sliceable_geometry() {
         return None;
     }
 
@@ -1250,37 +1250,6 @@ fn invalidate_scale9_caches<'gc>(dobj: DisplayObject<'gc>) {
         }
         _ => {}
     }
-}
-
-/// True if `this` contributes any geometry that would be sliced — itself a
-/// Graphic/MorphShape, or a container with own `.graphics` drawing or a direct
-/// shape child. Used to skip 9-slice for objects where the full bounds come
-/// entirely from non-sliceable children (slice layout would be valid but
-/// nothing would render under it).
-fn has_sliceable_geometry<'gc>(this: DisplayObject<'gc>) -> bool {
-    if matches!(
-        this,
-        DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
-    ) {
-        return true;
-    }
-    if let Some(mc) = this.as_movie_clip()
-        && let Some(d) = mc.drawing()
-        && !d.is_empty()
-    {
-        return true;
-    }
-    if let Some(ctr) = this.as_container() {
-        for child in ctr.iter_render_list() {
-            if matches!(
-                child,
-                DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
-            ) {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 /// Render `this` with 9-slice scaling applied. Walks descendants in render
@@ -3375,6 +3344,40 @@ pub trait TDisplayObject<'gc>:
                 parent.invalidate_cached_bitmap();
             }
         }
+    }
+
+    /// True if this object has any geometry that would be sliced — itself a
+    /// Graphic/MorphShape, or a container with own `.graphics` drawing or a direct
+    /// shape child. Used to skip 9-slice for objects where the full bounds come
+    /// entirely from non-sliceable children (slice layout would be valid but
+    /// nothing would render under it).
+    #[no_dynamic]
+    fn has_sliceable_geometry(self) -> bool {
+        if matches!(
+            self,
+            DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
+        ) {
+            return true;
+        }
+
+        if let Some(mc) = self.as_movie_clip()
+            && mc.drawing().is_some_and(|d| !d.is_empty())
+        {
+            return true;
+        }
+
+        if let Some(ctr) = self.as_container() {
+            for child in ctr.iter_render_list() {
+                if matches!(
+                    child,
+                    DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     /// Retrieve a named property from the AVM1 object.

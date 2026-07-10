@@ -201,43 +201,12 @@ pub fn set_scale9grid<'gc>(
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
-    if !is_valid_scale9grid_target(dobj) {
+    if !dobj.has_sliceable_geometry() {
         return Err(make_error_2004(activation, Error2004Type::ArgumentError));
     }
 
     dobj.set_scaling_grid(candidate);
     Ok(Value::Undefined)
-}
-
-/// Validates that `target` produces sliceable shape geometry, per the FP 32
-/// immediate-children rule (Sprite+MC+Shape and Sprite+TextField both fail).
-fn is_valid_scale9grid_target<'gc>(target: DisplayObject<'gc>) -> bool {
-    if matches!(
-        target,
-        DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
-    ) {
-        return true;
-    }
-
-    if let Some(mc) = target.as_movie_clip()
-        && let Some(drawing) = mc.drawing()
-        && !drawing.is_empty()
-    {
-        return true;
-    }
-
-    if let Some(ctr) = target.as_container() {
-        for child in ctr.iter_render_list() {
-            if matches!(
-                child,
-                DisplayObject::Graphic(_) | DisplayObject::MorphShape(_)
-            ) {
-                return true;
-            }
-        }
-    }
-
-    false
 }
 
 /// Implements `scaleY`'s getter.
